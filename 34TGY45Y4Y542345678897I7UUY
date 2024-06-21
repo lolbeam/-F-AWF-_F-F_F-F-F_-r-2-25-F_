@@ -1,0 +1,688 @@
+// ==UserScript==
+// @name         Login and Execute
+// @namespace    http://tampermonkey.net/
+// @version      2.1
+// @description  Login to execute another script
+// @author       Your Name
+// @match        https://bloxflip.com/*
+// @grant        GM_addStyle
+// ==/UserScript==
+
+(function() {
+    'use strict';
+
+    const validKey = "4c80a4dee25e2824d889abe7e35f5581";
+    const keyExpiryTime = 7 * 24 * 60 * 60 * 1000; // 1 week in milliseconds
+    let isLoggedIn = false;
+    let loginTimestamp = null;
+    let userIP = null;
+
+    // Fetch user IP address
+    function fetchIP(callback) {
+        fetch('https://api.ipify.org?format=json')
+            .then(response => response.json())
+            .then(data => callback(data.ip));
+    }
+
+    // Check if the user is logged in
+    function checkLogin() {
+        const storedKey = localStorage.getItem('predictorKey');
+        loginTimestamp = parseInt(localStorage.getItem('loginTimestamp'), 10);
+        const storedIP = localStorage.getItem('userIP');
+
+        if (storedKey === validKey && loginTimestamp && storedIP) {
+            fetchIP(ip => {
+                if (ip !== storedIP) {
+                    alert("You cannot use someone else's key.");
+                    showLoginUI();
+                } else {
+                    const currentTime = new Date().getTime();
+                    const elapsedTime = currentTime - loginTimestamp;
+
+                    if (elapsedTime < keyExpiryTime) {
+                        isLoggedIn = true;
+                        userIP = storedIP;
+                        runMainScript();
+                    } else {
+                        localStorage.removeItem('predictorKey');
+                        localStorage.removeItem('loginTimestamp');
+                        localStorage.removeItem('userIP');
+                        alert('Your key has expired.');
+                        showLoginUI();
+                    }
+                }
+            });
+        } else {
+            showLoginUI();
+        }
+    }
+
+    // Show login UI
+    function showLoginUI() {
+        const loginUI = document.createElement('div');
+        loginUI.style.position = 'fixed';
+        loginUI.style.top = '50%';
+        loginUI.style.left = '50%';
+        loginUI.style.transform = 'translate(-50%, -50%)';
+        loginUI.style.width = '300px';
+        loginUI.style.backgroundColor = 'rgba(43, 43, 43, 0.95)';
+        loginUI.style.color = 'white';
+        loginUI.style.display = 'flex';
+        loginUI.style.flexDirection = 'column';
+        loginUI.style.justifyContent = 'center';
+        loginUI.style.alignItems = 'center';
+        loginUI.style.border = '2px solid #444';
+        loginUI.style.borderRadius = '10px';
+        loginUI.style.boxShadow = '0 4px 8px rgba(0, 0, 0, 0.2)';
+        loginUI.style.fontFamily = 'Montserrat, sans-serif';
+        loginUI.style.padding = '20px';
+        loginUI.style.zIndex = '10000';
+        loginUI.style.transition = 'all 1s ease';
+        loginUI.style.backgroundImage = 'url(https://media.giphy.com/media/R3At3CFeYe02MNNpgj/giphy.gif)';
+        loginUI.style.backgroundSize = 'cover';
+        loginUI.style.backgroundPosition = 'center';
+
+        const loginTitle = document.createElement('h1');
+        loginTitle.innerText = 'F3AR LOGIN';
+        loginTitle.style.margin = '10px';
+        loginTitle.style.color = '#ffffff';
+        loginTitle.style.fontSize = '24px';
+        loginTitle.style.transition = 'transform 0.3s ease';
+        loginTitle.style.cursor = 'pointer';
+        loginTitle.addEventListener('mouseover', () => {
+            loginTitle.style.transform = 'scale(1.2)';
+        });
+        loginTitle.addEventListener('mouseout', () => {
+            loginTitle.style.transform = 'scale(1)';
+        });
+        loginUI.appendChild(loginTitle);
+
+        const keyInput = document.createElement('input');
+        keyInput.type = 'text';
+        keyInput.placeholder = 'Enter your key';
+        keyInput.style.margin = '10px';
+        keyInput.style.padding = '10px';
+        keyInput.style.width = '80%';
+        keyInput.style.border = '2px solid #555';
+        keyInput.style.borderRadius = '5px';
+        keyInput.style.fontSize = '16px';
+        keyInput.style.transition = 'all 1s ease';
+        keyInput.style.backgroundColor = 'rgba(255, 255, 255, 0.1)';
+        keyInput.style.color = 'white';
+        loginUI.appendChild(keyInput);
+
+        const loginButton = document.createElement('button');
+        loginButton.innerText = 'Login';
+        loginButton.style.padding = '10px 20px';
+        loginButton.style.margin = '10px';
+        loginButton.style.border = 'none';
+        loginButton.style.borderRadius = '5px';
+        loginButton.style.backgroundColor = '#000000';
+        loginButton.style.color = 'white';
+        loginButton.style.cursor = 'pointer';
+        loginButton.style.fontSize = '16px';
+        loginButton.style.transition = 'all 1s ease';
+        loginButton.addEventListener('click', () => {
+            fetchIP(ip => {
+                if (keyInput.value === validKey) {
+                    isLoggedIn = true;
+                    loginTimestamp = new Date().getTime();
+                    userIP = ip;
+                    localStorage.setItem('predictorKey', validKey);
+                    localStorage.setItem('loginTimestamp', loginTimestamp.toString());
+                    localStorage.setItem('userIP', userIP);
+                    document.body.removeChild(loginUI);
+                    runMainScript();
+                } else {
+                    alert('Invalid key.');
+                }
+            });
+        });
+        loginUI.appendChild(loginButton);
+
+        document.body.appendChild(loginUI);
+    }
+
+    function runMainScript() {
+        const url = window.location.href;
+        let isGifEnabled = true;
+
+        GM_addStyle(`@import url('https://fonts.googleapis.com/css2?family=Montserrat:wght@400;600&display=swap');`);
+        GM_addStyle(`
+            select {
+                background-color: rgba(0, 0, 0, 0.8);
+                color: white;
+            }
+            option {
+                background-color: rgba(0, 0, 0, 0.8);
+                color: white;
+            }
+            @keyframes gradient {
+                0% { background-position: 0% 50%; }
+                50% { background-position: 100% 50%; }
+                100% { background-position: 0% 50%; }
+            }
+            @keyframes fadeIn {
+                from { opacity: 0; }
+                to { opacity: 1; }
+            }
+            @keyframes slideIn {
+                from { transform: translate(-50%, -60%); }
+                to { transform: translate(-50%, -50%); }
+            }
+        `);
+
+        // Create fixed UI
+        const ui = document.createElement('div');
+        ui.style.position = 'fixed';
+        ui.style.top = '50%';
+        ui.style.left = '0';
+        ui.style.transform = 'translateY(-50%)';
+        ui.style.width = '250px';
+        ui.style.backgroundColor = 'rgba(43, 43, 43, 0.95)';
+        ui.style.color = 'white';
+        ui.style.display = 'flex';
+        ui.style.flexDirection = 'column';
+        ui.style.justifyContent = 'flex-start';
+        ui.style.alignItems = 'center';
+        ui.style.border = '2px solid #444';
+        ui.style.borderRadius = '10px';
+        ui.style.boxShadow = '0 4px 8px rgba(0, 0, 0, 0.2)';
+        ui.style.fontFamily = 'Montserrat, sans-serif';
+        ui.style.padding = '15px';
+        ui.style.zIndex = '9999';
+        ui.style.transition = 'left 0.5s ease';
+        ui.style.backgroundImage = 'url(https://media.giphy.com/media/R3At3CFeYe02MNNpgj/giphy.gif)';
+        ui.style.backgroundSize = 'cover';
+        ui.style.backgroundPosition = 'center';
+
+        let isUiVisible = true;
+
+        // Toggle UI visibility
+        function toggleUi() {
+            if (isUiVisible) {
+                ui.style.left = '-260px';
+            } else {
+                ui.style.left = '0';
+            }
+            isUiVisible = !isUiVisible;
+        }
+
+        // Listen for 'Insert' key press
+        document.addEventListener('keydown', function(event) {
+            if (event.key === 'Insert') {
+                toggleUi();
+            }
+        });
+
+        // Title
+        const title = document.createElement('h1');
+        title.innerText = 'F3AR';
+        title.style.margin = '10px';
+        title.style.color = '#ffffff';
+        title.style.fontSize = '24px';
+        title.style.transition = 'transform 0.3s ease';
+        title.style.cursor = 'pointer';
+        title.addEventListener('mouseover', () => {
+            title.style.transform = 'scale(1.2)';
+        });
+        title.addEventListener('mouseout', () => {
+            title.style.transform = 'scale(1)';
+        });
+        ui.appendChild(title);
+
+        // Game mode selection button
+        const menuButton = document.createElement('button');
+        menuButton.innerText = '☰';
+        menuButton.style.position = 'absolute';
+        menuButton.style.top = '10px';
+        menuButton.style.left = '10px';
+        menuButton.style.border = 'none';
+        menuButton.style.borderRadius = '50%';
+        menuButton.style.width = '30px';
+        menuButton.style.height = '30px';
+        menuButton.style.fontSize = '16px';
+        menuButton.style.cursor = 'pointer';
+        menuButton.style.backgroundColor = '#000000';
+        menuButton.style.color = 'white';
+        menuButton.style.zIndex = '10000';
+        menuButton.style.transition = 'all 1s ease';
+        ui.appendChild(menuButton);
+
+        // Game mode UI
+        const gameModeUI = document.createElement('div');
+        gameModeUI.style.position = 'fixed';
+        gameModeUI.style.top = '50%';
+        gameModeUI.style.left = '50%';
+        gameModeUI.style.transform = 'translate(-50%, -50%)';
+        gameModeUI.style.width = '200px';
+        gameModeUI.style.backgroundColor = 'rgba(43, 43, 43, 0.95)';
+        gameModeUI.style.color = 'white';
+        gameModeUI.style.display = 'none';
+        gameModeUI.style.flexDirection = 'column';
+        gameModeUI.style.justifyContent = 'center';
+        gameModeUI.style.alignItems = 'center';
+        gameModeUI.style.border = '2px solid #444';
+        gameModeUI.style.borderRadius = '10px';
+        gameModeUI.style.boxShadow = '0 4px 8px rgba(0, 0, 0, 0.2)';
+        gameModeUI.style.fontFamily = 'Montserrat, sans-serif';
+        gameModeUI.style.padding = '20px';
+        gameModeUI.style.zIndex = '10000';
+        gameModeUI.style.transition = 'all 1s ease';
+        gameModeUI.style.animation = 'fadeIn 1s ease, slideIn 0.5s ease';
+        gameModeUI.style.backgroundImage = 'url(https://media.giphy.com/media/R3At3CFeYe02MNNpgj/giphy.gif)';
+        gameModeUI.style.backgroundSize = 'cover';
+        gameModeUI.style.backgroundPosition = 'center';
+
+        const gameModeTitle = document.createElement('h2');
+        gameModeTitle.innerText = 'Select Game Mode';
+        gameModeUI.appendChild(gameModeTitle);
+
+        const minesButton = document.createElement('button');
+        minesButton.innerText = 'Mines';
+        minesButton.style.margin = '10px 0';
+        minesButton.style.padding = '10px 20px';
+        minesButton.style.border = 'none';
+        minesButton.style.borderRadius = '5px';
+        minesButton.style.backgroundColor = '#000000';
+        minesButton.style.color = 'white';
+        minesButton.style.cursor = 'pointer';
+        minesButton.style.fontSize = '16px';
+        minesButton.style.transition = 'all 1s ease';
+        gameModeUI.appendChild(minesButton);
+
+        const towersButton = document.createElement('button');
+        towersButton.innerText = 'Towers';
+        towersButton.style.margin = '10px 0';
+        towersButton.style.padding = '10px 20px';
+        towersButton.style.border = 'none';
+        towersButton.style.borderRadius = '5px';
+        towersButton.style.backgroundColor = '#000000';
+        towersButton.style.color = 'white';
+        towersButton.style.cursor = 'pointer';
+        towersButton.style.fontSize = '16px';
+        towersButton.style.transition = 'all 1s ease';
+        gameModeUI.appendChild(towersButton);
+
+        const closeGameModeButton = document.createElement('button');
+        closeGameModeButton.innerText = 'X';
+        closeGameModeButton.style.position = 'absolute';
+        closeGameModeButton.style.top = '10px';
+        closeGameModeButton.style.right = '10px';
+        closeGameModeButton.style.border = 'none';
+        closeGameModeButton.style.borderRadius = '50%';
+        closeGameModeButton.style.width = '30px';
+        closeGameModeButton.style.height = '30px';
+        closeGameModeButton.style.fontSize = '16px';
+        closeGameModeButton.style.cursor = 'pointer';
+        closeGameModeButton.style.backgroundColor = 'transparent';
+        closeGameModeButton.style.color = 'white';
+        closeGameModeButton.style.transition = 'all 1s ease';
+        gameModeUI.appendChild(closeGameModeButton);
+
+        document.body.appendChild(gameModeUI);
+
+        menuButton.addEventListener('click', () => {
+            gameModeUI.style.display = 'flex';
+        });
+
+        closeGameModeButton.addEventListener('click', () => {
+            gameModeUI.style.display = 'none';
+        });
+
+        // Logic for changing game modes
+        minesButton.addEventListener('click', () => {
+            window.location.href = 'https://bloxflip.com/mines';
+        });
+
+        towersButton.addEventListener('click', () => {
+            window.location.href = 'https://bloxflip.com/towers';
+        });
+
+        document.body.appendChild(ui);
+
+        if (url.endsWith('/mines')) {
+            // Textbox for amount of spots
+            const amountInput = document.createElement('input');
+            amountInput.type = 'number';
+            amountInput.placeholder = 'Enter amount';
+            amountInput.style.margin = '10px';
+            amountInput.style.padding = '10px';
+            amountInput.style.width = '80%';
+            amountInput.style.border = '2px solid #555';
+            amountInput.style.borderRadius = '5px';
+            amountInput.style.fontSize = '16px';
+            amountInput.style.transition = 'all 1s ease';
+            amountInput.style.backgroundColor = 'rgba(255, 255, 255, 0.1)';
+            amountInput.style.color = 'white';
+            ui.appendChild(amountInput);
+
+            // Dropdown for methods
+            const methodDropdown = document.createElement('select');
+            methodDropdown.style.margin = '10px';
+            methodDropdown.style.padding = '10px';
+            methodDropdown.style.width = '80%';
+            methodDropdown.style.border = '2px solid #555';
+            methodDropdown.style.borderRadius = '5px';
+            methodDropdown.style.fontSize = '16px';
+            methodDropdown.style.transition = 'all 1s ease';
+            methodDropdown.style.backgroundColor = 'rgba(0, 0, 0, 0.8)';
+            methodDropdown.style.color = 'white';
+            methodDropdown.innerHTML = `
+                <option value="strat2">strat2</option>
+                <option value="strat1">strat1</option>
+                <option value="inverse">Inverse Mines</option>
+                <option value="spoofclick">Spoofclick</option>
+                <option value="pastgames">Past Games Probability</option>
+                <option value="pastgames2">Past Games Probability2</option>
+                <option value="merxy">merxy</option>
+                <option value="neighbors">Neighbors</option>
+            `;
+            ui.appendChild(methodDropdown);
+
+            // Predict button
+            const predictButton = document.createElement('button');
+            predictButton.innerText = 'Predict';
+            predictButton.style.padding = '15px 30px';
+            predictButton.style.margin = '20px';
+            predictButton.style.border = 'none';
+            predictButton.style.borderRadius = '5px';
+            predictButton.style.backgroundColor = '#000000';
+            predictButton.style.color = 'white';
+            predictButton.style.cursor = 'pointer';
+            predictButton.style.width = '80%';
+            predictButton.style.fontSize = '16px';
+            predictButton.style.transition = 'all 1s ease';
+            predictButton.style.boxShadow = '0 4px 8px rgba(0, 0, 0, 0.2)';
+            ui.appendChild(predictButton);
+
+            // Function to blur elements
+            function blurElements() {
+                const buttons = document.querySelectorAll('.mines_minesGameItem__S2ytQ');
+                buttons.forEach(button => {
+                    button.style.filter = 'blur(5px)';
+                });
+            }
+
+            // Function to unblur elements
+            function unblurElements() {
+                const buttons = document.querySelectorAll('.mines_minesGameItem__S2ytQ');
+                buttons.forEach(button => {
+                    button.style.filter = '';
+                });
+            }
+
+            // Function to highlight elements with glow
+            function highlightElements(amount) {
+                const buttons = document.querySelectorAll('.mines_minesGameItem__S2ytQ');
+                buttons.forEach(button => {
+                    button.style.boxShadow = '';
+                    button.style.backgroundImage = 'none';
+                });
+
+                const randomIndices = [];
+                while (randomIndices.length < amount) {
+                    const randomIndex = Math.floor(Math.random() * buttons.length);
+                    if (!randomIndices.includes(randomIndex)) {
+                        randomIndices.push(randomIndex);
+                    }
+                }
+
+                randomIndices.forEach(index => {
+                    buttons[index].style.boxShadow = '0 0 10px 5px white';
+                    buttons[index].style.backgroundImage = 'url(https://media.giphy.com/media/R3At3CFeYe02MNNpgj/giphy.gif)';
+                });
+            }
+
+            // Add click event to predict button
+            predictButton.addEventListener('click', () => {
+                const amount = parseInt(amountInput.value, 10);
+                if (isNaN(amount) || amount < 1 || amount > 25) {
+                    alert('Please enter a valid amount between 1 and 25');
+                    return;
+                }
+
+                blurElements();
+
+                setTimeout(() => {
+                    unblurElements();
+                    highlightElements(amount);
+                }, 2000);
+            });
+
+        } else if (url.endsWith('/towers')) {
+            // Dropdown for methods
+            const methodDropdown = document.createElement('select');
+            methodDropdown.style.margin = '10px';
+            methodDropdown.style.padding = '10px';
+            methodDropdown.style.width = '80%';
+            methodDropdown.style.border = '2px solid #555';
+            methodDropdown.style.borderRadius = '5px';
+            methodDropdown.style.fontSize = '16px';
+            methodDropdown.style.transition = 'all 1s ease';
+            methodDropdown.style.backgroundColor = 'rgba(0, 0, 0, 0.8)';
+            methodDropdown.style.color = 'white';
+            methodDropdown.innerHTML = `
+                <option value="inverse">Inverse</option>
+                <option value="merxy_method">Merxy Method</option>
+                <option value="algorithm2">Algorithm2</option>
+                <option value="algorithm1">Algorithm1</option>
+                <option value="flix">Flix</option>
+                <option value="pastgames">Pastgames</option>
+            `;
+            ui.appendChild(methodDropdown);
+
+            // Predict button
+            const predictButton = document.createElement('button');
+            predictButton.innerText = 'Predict';
+            predictButton.style.padding = '15px 30px';
+            predictButton.style.margin = '20px';
+            predictButton.style.border = 'none';
+            predictButton.style.borderRadius = '5px';
+            predictButton.style.backgroundColor = '#000000';
+            predictButton.style.color = 'white';
+            predictButton.style.cursor = 'pointer';
+            predictButton.style.width = '80%';
+            predictButton.style.fontSize = '16px';
+            predictButton.style.transition = 'all 1s ease';
+            predictButton.style.boxShadow = '0 4px 8px rgba(0, 0, 0, 0.2)';
+            ui.appendChild(predictButton);
+
+            // Function to blur towers game container
+            function blurTowersContainer() {
+                const container = document.querySelector('.towers_towersGameInner__gbFa9');
+                if (container) {
+                    container.style.filter = 'blur(5px)';
+                }
+            }
+
+            // Function to unblur towers game container
+            function unblurTowersContainer() {
+                const container = document.querySelector('.towers_towersGameInner__gbFa9');
+                if (container) {
+                    container.style.filter = '';
+                }
+            }
+
+            // Function to highlight inverse towers with a spread-out pattern
+            function highlightInverseTowers() {
+                const rows = document.querySelectorAll('.towers_towersGameRow__flu2C');
+                rows.forEach(row => {
+                    const buttons = row.querySelectorAll('.towers_towersGameButton__xLe_v');
+                    buttons.forEach(button => {
+                        button.style.boxShadow = '';
+                        button.style.backgroundImage = 'none';
+                    });
+                });
+
+                rows.forEach(row => {
+                    const buttons = row.querySelectorAll('.towers_towersGameButton__xLe_v');
+                    const middleIndex = Math.floor(buttons.length / 2);
+                    const indices = [
+                        Math.floor(Math.random() * buttons.length), // Random index
+                        middleIndex, // Middle index
+                        Math.random() > 0.5 ? 0 : buttons.length - 1 // Either start or end index
+                    ];
+                    const randomIndex = indices[Math.floor(Math.random() * indices.length)];
+                    buttons[randomIndex].style.boxShadow = '0 0 10px 5px white';
+                    buttons[randomIndex].style.backgroundImage = 'url(https://media.giphy.com/media/R3At3CFeYe02MNNpgj/giphy.gif)';
+                });
+            }
+
+            // Add click event to predict button
+            predictButton.addEventListener('click', () => {
+                blurTowersContainer();
+
+                setTimeout(() => {
+                    unblurTowersContainer();
+                    highlightInverseTowers();
+                }, 2000);
+            });
+        }
+
+        // Settings button with emoji
+        const settingsButton = document.createElement('button');
+        settingsButton.innerText = '⚙️'; // Emoji for settings
+        settingsButton.style.position = 'absolute';
+        settingsButton.style.top = '10px';
+        settingsButton.style.right = '10px';
+        settingsButton.style.border = 'none';
+        settingsButton.style.borderRadius = '50%';
+        settingsButton.style.width = '30px';
+        settingsButton.style.height = '30px';
+        settingsButton.style.fontSize = '16px';
+        settingsButton.style.cursor = 'pointer';
+        settingsButton.style.backgroundColor = 'transparent';
+        settingsButton.style.zIndex = '10000';
+        settingsButton.style.transition = 'all 1s ease';
+        ui.appendChild(settingsButton);
+
+        // Settings UI
+        const settingsUI = document.createElement('div');
+        settingsUI.style.position = 'fixed';
+        settingsUI.style.top = '50%';
+        settingsUI.style.left = '50%';
+        settingsUI.style.transform = 'translate(-50%, -50%)';
+        settingsUI.style.width = '300px';
+        settingsUI.style.backgroundColor = 'rgba(43, 43, 43, 0.95)';
+        settingsUI.style.color = 'white';
+        settingsUI.style.display = 'none';
+        settingsUI.style.flexDirection = 'column';
+        settingsUI.style.justifyContent = 'flex-start';
+        settingsUI.style.alignItems = 'flex-start';
+        settingsUI.style.border = '2px solid #444';
+        settingsUI.style.borderRadius = '10px';
+        settingsUI.style.boxShadow = '0 4px 8px rgba(0, 0, 0, 0.2)';
+        settingsUI.style.fontFamily = 'Montserrat, sans-serif';
+        settingsUI.style.padding = '20px';
+        settingsUI.style.zIndex = '10000';
+        settingsUI.style.transition = 'all 1s ease';
+        settingsUI.style.animation = 'fadeIn 1s ease, slideIn 0.5s ease';
+        settingsUI.style.backgroundImage = 'url(https://media.giphy.com/media/R3At3CFeYe02MNNpgj/giphy.gif)';
+        settingsUI.style.backgroundSize = 'cover';
+        settingsUI.style.backgroundPosition = 'center';
+
+        const settingsTitle = document.createElement('h2');
+        settingsTitle.innerText = 'Settings';
+        settingsTitle.style.marginBottom = '20px';
+        settingsUI.appendChild(settingsTitle);
+
+        const unrigButton = document.createElement('button');
+        unrigButton.innerText = 'Unrig';
+        unrigButton.style.margin = '10px 0';
+        unrigButton.style.padding = '10px 20px';
+        unrigButton.style.border = 'none';
+        unrigButton.style.borderRadius = '5px';
+        unrigButton.style.backgroundColor = '#000000';
+        unrigButton.style.color = 'white';
+        unrigButton.style.cursor = 'pointer';
+        unrigButton.style.fontSize = '16px';
+        unrigButton.style.transition = 'all 1s ease';
+        settingsUI.appendChild(unrigButton);
+
+        const logoutButton = document.createElement('button');
+        logoutButton.innerText = 'Logout';
+        logoutButton.style.margin = '10px 0';
+        logoutButton.style.padding = '10px 20px';
+        logoutButton.style.border = 'none';
+        logoutButton.style.borderRadius = '5px';
+        logoutButton.style.backgroundColor = '#000000';
+        logoutButton.style.color = 'white';
+        logoutButton.style.cursor = 'pointer';
+        logoutButton.style.fontSize = '16px';
+        logoutButton.style.transition = 'all 1s ease';
+        settingsUI.appendChild(logoutButton);
+
+        const expiryTime = document.createElement('p');
+        expiryTime.innerText = 'Time until key expires:';
+        expiryTime.style.marginTop = '10px';
+        settingsUI.appendChild(expiryTime);
+
+        const expiryCountdown = document.createElement('p');
+        settingsUI.appendChild(expiryCountdown);
+
+        // Calculate and update expiry time
+        function updateExpiryTime() {
+            const currentTime = new Date().getTime();
+            const elapsedTime = currentTime - loginTimestamp;
+            const remainingTime = keyExpiryTime - elapsedTime;
+
+            if (remainingTime > 0) {
+                const days = Math.floor(remainingTime / (24 * 60 * 60 * 1000));
+                const hours = Math.floor((remainingTime % (24 * 60 * 60 * 1000)) / (60 * 60 * 1000));
+                const minutes = Math.floor((remainingTime % (60 * 60 * 1000)) / (60 * 1000));
+                const seconds = Math.floor((remainingTime % (60 * 1000)) / 1000);
+                expiryCountdown.innerText = `${days}d ${hours}h ${minutes}m ${seconds}s`;
+            } else {
+                localStorage.removeItem('predictorKey');
+                localStorage.removeItem('loginTimestamp');
+                localStorage.removeItem('userIP');
+                alert('Your key has expired.');
+                document.body.removeChild(ui);
+                showLoginUI();
+            }
+        }
+
+        updateExpiryTime();
+        setInterval(updateExpiryTime, 1000);
+
+        logoutButton.addEventListener('click', () => {
+            localStorage.removeItem('predictorKey');
+            localStorage.removeItem('loginTimestamp');
+            localStorage.removeItem('userIP');
+            document.body.removeChild(ui);
+            settingsUI.style.display = 'none';
+            showLoginUI();
+        });
+
+        const closeButton = document.createElement('button');
+        closeButton.innerText = 'X';
+        closeButton.style.position = 'absolute';
+        closeButton.style.top = '10px';
+        closeButton.style.right = '10px';
+        closeButton.style.border = 'none';
+        closeButton.style.borderRadius = '50%';
+        closeButton.style.width = '30px';
+        closeButton.style.height = '30px';
+        closeButton.style.fontSize = '16px';
+        closeButton.style.cursor = 'pointer';
+        closeButton.style.backgroundColor = 'transparent';
+        closeButton.style.color = 'white';
+        closeButton.style.transition = 'all 1s ease';
+        settingsUI.appendChild(closeButton);
+
+        closeButton.addEventListener('click', () => {
+            settingsUI.style.display = 'none';
+        });
+
+        document.body.appendChild(settingsUI);
+
+        settingsButton.addEventListener('click', () => {
+            settingsUI.style.display = 'flex';
+        });
+
+        document.body.appendChild(ui);
+    }
+
+    checkLogin();
+})();
